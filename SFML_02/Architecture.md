@@ -62,3 +62,20 @@
   - +addEntity(tag):    sp< Entity >
   - +getEntities():     EntityVec&
   - +getEntities(tag):  EntityVec&
+
+  ---
+  ### Game:
+  - -m_window:        sf::Window
+  - -m_entities:      EntityManager
+  - -m_paused:        bool
+  - -m_running:       bool
+
+  - -init():          void
+  - +update():        void
+
+  - -sMovement:       void
+  - -sUserInput:      void
+  - -sEnemySpawner:   void
+  - -sCollision:      void
+  - -sRender:         void
+
