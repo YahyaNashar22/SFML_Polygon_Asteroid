@@ -79,3 +79,18 @@
   - -sCollision:      void
   - -sRender:         void
 
+  ---
+  ## Vec2:
+  - +x:               T
+  - +y:               T
+
+  - +operator ==:     bool
+  - +operator !=:     bool
+
+  - +operator +:      Vec2
+  - +operator -:      Vec2
+  - +operator *:      Vec2
+  - +operator /:      Vec2
+
+  - +normalize:       void
+  - +length:          float
