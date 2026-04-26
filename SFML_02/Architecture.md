@@ -50,3 +50,15 @@
   - +tag:           string&
   - +destrpy:       void
 
+  ---
+  ### EntityManager:
+  - -m_entities:        EntityVec
+  - -m_entityMap:       EntitMap
+  - -m_toAdd:           EntityVec
+  - -m_totalEntities:   int
+
+  - -init():            void
+  - +update():          void
+  - +addEntity(tag):    sp< Entity >
+  - +getEntities():     EntityVec&
+  - +getEntities(tag):  EntityVec&
