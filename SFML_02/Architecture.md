@@ -6,7 +6,7 @@
 	- Component
 
 
-&nbsp;
+	---
 ## Components:
 - ### CTransform:
   - +pos:       Vec2f
@@ -21,7 +21,7 @@
   - +score:     int
 
  - ### CShape:
-  - +circle:    float
+   - +circle:    sf::CircleShape
 
 - ### CLifeSpan:
   - +lifeSpan:  int
@@ -33,4 +33,20 @@
   - +left:      int
   - +right:     int
   - +shoot:     int
+
+  ---
+  ## Entity:
+  - -m_components:  CTuple
+  - -m_alive:       bool
+  - -m_id:          int
+  - -m_tag:         string
+
+  - +get< T >:      T&
+  - +add< T >:      void
+  - +has< T >:      bool
+
+  - +id:            int
+  - +isAlive:       bool
+  - +tag:           string&
+  - +destrpy:       void
 
