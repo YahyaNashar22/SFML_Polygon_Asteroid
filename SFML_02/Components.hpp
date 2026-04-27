@@ -70,3 +70,6 @@ class CInput : public Component {
 
   CInput() = default;
 };
+
+// TODO
+// Include a special power up component ( with cooldown )
