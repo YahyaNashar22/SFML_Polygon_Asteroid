@@ -1,0 +1,5 @@
+BasedOnStyle: Google
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+UseTab: Always
+TabWidth: 4
