@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-Game::Game(const std::string& config) { init(config); }
+Game::Game(const std::string& config) : m_text(m_font) { init(config); }
 
 void Game::init(const std::string& path)
 {
@@ -181,7 +181,7 @@ void Game::sRender()
 	// set the rotation of the shape besd on the entity's transform->angle
 	player()->get<CTransform>().angle += 1.0f;
 	player()->get<CShape>().circle.setRotation(
-	    player()->get<CTransform>().angle);
+	    sf::degrees(player()->get<CTransform>().angle));
 
 	// draw the entity's sf::CircleShape
 	m_window.draw(player()->get<CShape>().circle);
