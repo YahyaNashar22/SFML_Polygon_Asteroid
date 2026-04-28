@@ -1,9 +1,9 @@
-#include <iostream>
 #include <SFML/Graphics.hpp>
-#include <imgui.h>
+
+#include "Game.h"
 
 int main()
 {
-    std::cout << "Hello World!\n";
+	Game g("config.txt");
+	g.run();
 }
-
