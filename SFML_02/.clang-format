@@ -2,4 +2,6 @@ BasedOnStyle: Google
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
 UseTab: Always
-TabWidth: 4
+TabWidth: 8
+IndentWidth: 8
+BreakBeforeBraces: Allman
