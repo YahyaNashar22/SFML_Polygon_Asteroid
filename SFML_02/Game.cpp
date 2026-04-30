@@ -8,16 +8,23 @@ void Game::init(const std::string& path)
 {
 	// TODO: read in config file here
 	//	 use the premade PlayerConfig, EnemyConfig, BulletConfig
-	// variables
+	//	 variables
 
 	// setup default window parameters
-	m_window.create(sf::VideoMode({1280, 720}), "SFML_02");
+	m_window.create(sf::VideoMode({1280, 720}), "SFML Polygon Asteroid");
 	m_window.setFramerateLimit(60);
 
-	ImGui::SFML::Init(m_window);
+	if (!ImGui::SFML::Init(m_window))
+	{
+		std::cerr << "Failed to initialize SFML-Window\n";
+	}
 
-	// scale the imgui ui and text size by 2
-	ImGui::GetStyle().ScaleAllSizes(2.0f);
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.Fonts->Clear();
+	io.Fonts->AddFontFromFileTTF("ARIAL.TTF", 12.0f);
+
+	ImGui::GetStyle().ScaleAllSizes(1.0f);
 	ImGui::GetIO().FontGlobalScale = 2.0f;
 
 	spawnPlayer();
@@ -178,10 +185,13 @@ void Game::sRender()
 	//	 sample drawing of the player Entity that we have created
 	m_window.clear();
 
-	// set the rotation of the shape besd on the entity's transform->angle
+	// set the rotation of the shape based on the entity's transform->angle
 	player()->get<CTransform>().angle += 1.0f;
 	player()->get<CShape>().circle.setRotation(
 	    sf::degrees(player()->get<CTransform>().angle));
+	// set the position of the shape based on the entity's transform pos
+	player()->get<CShape>().circle.setPosition(
+	    player()->get<CTransform>().pos);
 
 	// draw the entity's sf::CircleShape
 	m_window.draw(player()->get<CShape>().circle);
@@ -254,7 +264,7 @@ void Game::sUserInput()
 			{
 				std::cout << "Left Mouse Button Clicked at ( "
 					  << mouseClick->position.x << ","
-					  << mouseClick->position.y << "\n";
+					  << mouseClick->position.y << " )\n";
 				// call spawnBullet here
 			}
 
@@ -262,7 +272,7 @@ void Game::sUserInput()
 			{
 				std::cout << "Right Mouse Button Clicked at ( "
 					  << mouseClick->position.x << ","
-					  << mouseClick->position.y << "\n";
+					  << mouseClick->position.y << " )\n";
 				// call spawnSpecialWeapon here
 			}
 		}

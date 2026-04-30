@@ -6,9 +6,11 @@
 #include "imgui-SFML.h"
 #include "imgui.h"
 
+#include "EntityManager.hpp"
+
 struct PlayerConfig
 {
-	int   SR, CR, FR, FG, OR, OG, OB, OT, V;
+	int   SR, CR, FR, FG, FB, OR, OG, OB, OT, V;
 	float S;
 };
 
@@ -24,7 +26,6 @@ struct BulletConfig
 	float S;
 };
 
-#include "EntityManager.hpp"
 
 class Game
 {

@@ -25,6 +25,7 @@
   <ItemGroup>
     <None Include="Architecture.md" />
     <None Include=".clang-format" />
+    <None Include="config.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components.hpp">
@@ -42,5 +43,11 @@
     <ClInclude Include="Vec2.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="config.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="ARIAL.TTF" />
   </ItemGroup>
 </Project>
