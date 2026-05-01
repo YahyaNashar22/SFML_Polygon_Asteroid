@@ -5,7 +5,7 @@
 
 class EntityManager;
 
-// TDO add the special power component here
+// TODO: add the special power component here
 using ComponentTuple =
     std::tuple<CTransform, CShape, CCollision, CInput, CScore, CLifeSpan>;
 
