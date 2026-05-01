@@ -1,15 +1,15 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
 #include <math.h>
 
+#include <SFML/Graphics.hpp>
 
 template <typename T>
 class Vec2
 {
-public:
-	T x =	 0;
-	T y =	 0;
+       public:
+	T x = 0;
+	T y = 0;
 
 	Vec2() = default;
 
@@ -19,65 +19,54 @@ public:
 	Vec2(const sf::Vector2<T>& vec) : x(vec.x), y(vec.y) {}
 
 	// allow automatic conversion to sf::Vector2
-	// this lets us pass VEc2 into sfml functions
-	operator sf::Vector2<T>()
+	// this lets us pass Vec2 into sfml functions
+	operator sf::Vector2<T>() { return sf::Vector2<T>(x, y); }
+
+	Vec2 operator+(const Vec2& rhs) const
 	{
-		return sf::Vector2<T>(x, y);
+		return Vec2(x + rhs.x, y + rhs.y);
 	}
 
-	Vec2 operator + (const Vec2& rhs) const
+	Vec2 operator-(const Vec2& rhs) const
 	{
-		// TODO
-		return Vec2();
+		return Vec2(x - rhs.x, y - rhs.y);
 	}
 
-	Vec2 operator - (const Vec2& rhs) const
+	Vec2 operator*(const T val) const { return Vec2(x * val, y * val); }
+
+	Vec2 operator/(const T val) const { return Vec2(x / val, y / val); }
+
+	bool operator==(const Vec2& rhs) const
 	{
-		// TODO
-		return Vec2();
+		return x == rhs.x && y == rhs.y;
 	}
 
-	Vec2 operator * (const T val) const
+	void operator+=(const Vec2& rhs) { x += rhs.x, y += rhs.y; }
+
+	void operator-=(const Vec2& rhs)
 	{
-		// TODO
-		return Vec2();
+		x -= rhs.x;
+		y -= rhs.y;
 	}
 
-	Vec2 operator / (const T val) const
+	void operator*=(const T val)
 	{
-		// TODO
-		return Vec2();
+		x *= val;
+		y *= val;
 	}
 
-	Vec2 operator == (const Vec2& rhs) const
+	void operator/=(const T val)
 	{
-		// TODO
-		return Vec2();
+		x /= val;
+		y /= val;
 	}
 
-	void operator += (const Vec2& rhs) const
+	float dist(const Vec2& rhs) const 
 	{
-		// TODO
-	}
+		T dx = x - rhs.x;
+		T dy = y - rhs.y;
 
-	void operator -= (const Vec2& rhs) const
-	{
-		// TODO
-	}
-
-	void operator *= (const T val) const
-	{
-		// TODO
-	}
-
-	void operator /= (const T val) const
-	{
-		// TODO
-	}
-
-	float dist(const Vec2& rhs) const
-	{
-		// TODO
+		return std::sqrt(dx * dx + dy * dy);
 	}
 };
 
