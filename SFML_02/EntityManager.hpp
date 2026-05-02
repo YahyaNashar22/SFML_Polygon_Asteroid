@@ -60,15 +60,8 @@ class EntityManager
 		auto entity =
 		    std::shared_ptr<Entity>(new Entity(m_totalEntities++, tag));
 
-		// add it to the vec of all entities
+		// add it to the vec of entitiesToAdd
 		m_entitiesToAdd.push_back(entity);
-
-		// add it to the entity map
-		if (m_entityMap.find(tag) == m_entityMap.end())
-		{
-			m_entityMap[tag] = EntityVec();
-		}
-		m_entityMap[tag].push_back(entity);
 
 		return entity;
 	}

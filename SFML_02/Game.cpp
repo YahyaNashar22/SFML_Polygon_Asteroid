@@ -28,6 +28,7 @@ void Game::init(const std::string& path)
 	ImGui::GetIO().FontGlobalScale = 2.0f;
 
 	spawnPlayer();
+	spawnEnemy();
 }
 
 std::shared_ptr<Entity> Game::player()
@@ -41,7 +42,7 @@ std::shared_ptr<Entity> Game::player()
 
 void Game::run()
 {
-	// TODO: add pause fnuctionality in here
+	// TODO: add pause functionality in here
 	//	some systems should function while paused ( rendering )
 	//	some systems shouldn't (movement / input)
 
@@ -99,9 +100,15 @@ void Game::spawnPlayer()
 void Game::spawnEnemy()
 {
 	// TODO: make sure the enemy is spawned properly with the m_enemyConfig
-	// variables
+	//	 variables
 	//	the enemy must be spawned completely within the bounds of the
-	// window
+	//	window
+	auto entity = m_entities.addEntity("enemy");
+
+	entity->add<CTransform>(Vec2f(100.0f, 200.0f), Vec2f(1.0f, 1.0f), 0.0f);
+
+	entity->add<CShape>(32.0f, 4, sf::Color(100, 200, 50),
+			    sf::Color(255, 123, 0), 4.0f);
 
 	// record when the most recent enemy was spawned
 	m_lastEnemySpawnTime = m_currentFrame;
@@ -180,25 +187,30 @@ void Game::sGUI()
 }
 
 void Game::sRender()
-{
-	// TODO: change the code below to draw ALL of the entities
-	//	 sample drawing of the player Entity that we have created
-	m_window.clear();
 
-	// set the rotation of the shape based on the entity's transform->angle
-	player()->get<CTransform>().angle += 1.0f;
-	player()->get<CShape>().circle.setRotation(
-	    sf::degrees(player()->get<CTransform>().angle));
-	// set the position of the shape based on the entity's transform pos
-	player()->get<CShape>().circle.setPosition(
-	    player()->get<CTransform>().pos);
+{	m_window.clear();
 
-	// draw the entity's sf::CircleShape
-	m_window.draw(player()->get<CShape>().circle);
+	// Iterate through all entities ( neglecting the entities that don't have transform or shape components.
+	for (auto& e : m_entities.getEntities())
+	{
+		if (!e->has<CTransform>() || !e->has<CShape>())
+		{
+			continue;	
+		}
+
+		auto& transform = e->get<CTransform>();
+		auto& shape	= e->get<CShape>().circle;
+
+		transform.angle += 1.0f;
+
+		shape.setRotation(sf::degrees(transform.angle));
+		shape.setPosition(transform.pos);
+
+		m_window.draw(shape);
+	}
 
 	// draw the ui last
 	ImGui::SFML::Render(m_window);
-
 	m_window.display();
 }
 
