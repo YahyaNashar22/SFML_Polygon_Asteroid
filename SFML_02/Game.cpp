@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <ctime>
+#include <cstdint>
 #include <iostream>
 
 Game::Game(const std::string& config) : m_text(m_font) { init(config); }
@@ -26,6 +27,19 @@ void Game::init(const std::string& path)
 	m_enemyConfig.SMAX = 3.0f;  // max speed
 	m_enemyConfig.L	   = 60;    // lifespan later
 	m_enemyConfig.SI   = 120;   // spawn interval frames
+
+	m_bulletConfig.SR = 10;	    // shape radius
+	m_bulletConfig.CR = 10;	    // collision radius
+	m_bulletConfig.FR = 255;    // fill red
+	m_bulletConfig.FG = 255;    // fill green
+	m_bulletConfig.FB = 255;    // fill blue
+	m_bulletConfig.OR = 255;    // outline red
+	m_bulletConfig.OG = 0;	    // outline green
+	m_bulletConfig.OB = 0;	    // outline blue
+	m_bulletConfig.OT = 2;	    // outline thickness
+	m_bulletConfig.V  = 20;	    // vertices
+	m_bulletConfig.S  = 10.0f;  // speed
+	m_bulletConfig.L  = 60;	    // lifespan later
 
 	// setup default window parameters
 	m_window.create(sf::VideoMode({1280, 720}), "SFML Polygon Asteroid");
@@ -72,6 +86,7 @@ void Game::run()
 
 		sEnemySpawner();
 		sMovement();
+		sLifeSpan();
 		sCollision();
 		sUserInput();
 		sGUI();
@@ -173,9 +188,36 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> e)
 // spawns a bullet from a given entity to a target location
 void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2f& target)
 {
-	// TODO: implement the spawning of a bullet which travels toward target
-	//	- bullet speed is given asa scalar speed
-	//	- you must set the velocity by using formula in notes
+	auto& transform = entity->get<CTransform>();
+
+	Vec2f playerPos = transform.pos;
+	Vec2f direction = target - playerPos;
+
+	float length =
+	    std::sqrt(direction.x * direction.x + direction.y * direction.y);
+
+	if (length == 0.0f)
+	{
+		return;
+	}
+
+	direction /= length;
+
+	Vec2f bulletVelocity = direction * m_bulletConfig.S;
+
+	auto bullet = m_entities.addEntity("bullet");
+
+	bullet->add<CTransform>(playerPos, bulletVelocity, 0.0f);
+
+	bullet->add<CShape>(
+	    static_cast<float>(m_bulletConfig.SR), m_bulletConfig.V,
+	    sf::Color(m_bulletConfig.FR, m_bulletConfig.FG, m_bulletConfig.FB),
+	    sf::Color(m_bulletConfig.OR, m_bulletConfig.OG, m_bulletConfig.OB),
+	    m_bulletConfig.OT);
+
+	bullet->add<CCollision>(static_cast<float>(m_bulletConfig.CR));
+
+	bullet->add<CLifeSpan>(m_bulletConfig.L);
 }
 
 void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
@@ -229,15 +271,12 @@ void Game::sMovement()
 			continue;
 		}
 
-	e->get<CTransform>().pos += e->get<CTransform>().velocity;
+		e->get<CTransform>().pos += e->get<CTransform>().velocity;
 	}
-
 }
 
 void Game::sLifeSpan()
 {
-	// TODO: implement all lifespan functionality
-
 	// for all entities
 	//	if entity has no lifespan component, skip it
 	//	if entity has > 0 remaining lifespan, substract 1
@@ -245,6 +284,45 @@ void Game::sLifeSpan()
 	//		scale its alpha channel properly
 	//	if it has lifespan and its time is up
 	//		destroy the entity
+
+	for (auto& e : m_entities.getEntities())
+	{
+		if (!e->has<CLifeSpan>())
+		{
+			continue;
+		}
+		auto& lifespan = e->get<CLifeSpan>();
+
+		lifespan.remaining--;
+
+		if (e->has<CShape>())
+		{
+			auto& shape   = e->get<CShape>().circle;
+			auto  fill    = shape.getFillColor();
+			auto  outline = shape.getOutlineColor();
+
+			float ratio = static_cast<float>(lifespan.remaining) /
+				      static_cast<float>(lifespan.lifespan);
+
+			if (ratio < 0.0f)
+			{
+				ratio = 0.0f;
+			}
+
+			auto alpha = static_cast<std::uint8_t>(255 * ratio);
+
+			fill.a = alpha;
+			outline.a = alpha;
+
+			shape.setFillColor(fill);
+			shape.setOutlineColor(outline);
+		}
+	
+		if (lifespan.remaining <= 0)
+		{
+			e->destroy();
+		}
+	}
 }
 
 void Game::sCollision()
@@ -372,10 +450,11 @@ void Game::sUserInput()
 
 			if (mouseClick->button == sf::Mouse::Button::Left)
 			{
-				std::cout << "Left Mouse Button Clicked at ( "
-					  << mouseClick->position.x << ","
-					  << mouseClick->position.y << " )\n";
-				// call spawnBullet here
+				Vec2f mousePos(
+				    static_cast<float>(mouseClick->position.x),
+				    static_cast<float>(mouseClick->position.y));
+
+				spawnBullet(player(), mousePos);
 			}
 
 			if (mouseClick->button == sf::Mouse::Button::Right)
