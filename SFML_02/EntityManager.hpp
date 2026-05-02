@@ -1,9 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <vector>
-#include <algorithm>
 
 #include "Entity.hpp"
 
@@ -18,8 +18,10 @@ class EntityManager
 
 	void removeDeadEntities(EntityVec& vec)
 	{
-		// TODO: remove all dead entities from the input vector
-		// this is called by the update() function
+		vec.erase(std::remove_if(vec.begin(), vec.end(),
+					 [](const std::shared_ptr<Entity>& e)
+					 { return !e->isActive(); }),
+			  vec.end());
 	}
 
        public:
@@ -28,19 +30,18 @@ class EntityManager
 	void update()
 	{
 		// Add entities from m_entitiesToAdd to the vector  all entities
-		m_entities.insert(
-			m_entities.end(),
-			m_entitiesToAdd.begin(),
-			m_entitiesToAdd.end()
-		);
+		m_entities.insert(m_entities.end(), m_entitiesToAdd.begin(),
+				  m_entitiesToAdd.end());
 
-		// Add entities from m_entitiesToAdd to the vector inside the map, with the tag as a key
+		// Add entities from m_entitiesToAdd to the vector inside the
+		// map, with the tag as a key
 		for (auto& e : m_entitiesToAdd)
 		{
 			m_entityMap[e->tag()].push_back(e);
 		}
 
-		// Clear added entities so they don't get added in the next iteration
+		// Clear added entities so they don't get added in the next
+		// iteration
 		m_entitiesToAdd.clear();
 
 		// remove dead entities from the vector of all entities
