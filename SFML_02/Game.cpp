@@ -221,7 +221,17 @@ void Game::sMovement()
 	}
 
 	transform.velocity = direction * speed;
-	transform.pos += transform.velocity;
+
+	for (auto& e : m_entities.getEntities())
+	{
+		if (!e->has<CTransform>())
+		{
+			continue;
+		}
+
+	e->get<CTransform>().pos += e->get<CTransform>().velocity;
+	}
+
 }
 
 void Game::sLifeSpan()
