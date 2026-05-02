@@ -1,14 +1,31 @@
 #include "Game.h"
 
+#include <cstdlib>
+#include <ctime>
 #include <iostream>
 
 Game::Game(const std::string& config) : m_text(m_font) { init(config); }
 
 void Game::init(const std::string& path)
 {
+	// seed random
+	std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
 	// TODO: read in config file here
 	//	 use the premade PlayerConfig, EnemyConfig, BulletConfig
 	//	 variables
+	m_enemyConfig.SR   = 32;    // shape radius
+	m_enemyConfig.CR   = 32;    // collision radius
+	m_enemyConfig.OR   = 255;   // outline red
+	m_enemyConfig.OG   = 255;   // outline green
+	m_enemyConfig.OB   = 255;   // outline blue
+	m_enemyConfig.OT   = 4;	    // outline thickness
+	m_enemyConfig.VMIN = 3;	    // min vertices
+	m_enemyConfig.VMAX = 8;	    // max vertices
+	m_enemyConfig.SMIN = 1.0f;  // min speed
+	m_enemyConfig.SMAX = 3.0f;  // max speed
+	m_enemyConfig.L	   = 60;    // lifespan later
+	m_enemyConfig.SI   = 120;   // spawn interval frames
 
 	// setup default window parameters
 	m_window.create(sf::VideoMode({1280, 720}), "SFML Polygon Asteroid");
@@ -100,18 +117,42 @@ void Game::spawnPlayer()
 // spawn an enemy at a random position
 void Game::spawnEnemy()
 {
-	// TODO: make sure the enemy is spawned properly with the m_enemyConfig
-	//	 variables
-	//	the enemy must be spawned completely within the bounds of the
-	//	window
-	auto entity = m_entities.addEntity("enemy");
+	float radius = static_cast<float>(m_enemyConfig.SR);
+	float x =
+	    radius + static_cast<float>(
+			 std::rand() %
+			 static_cast<int>(m_window.getSize().x - radius * 2));
+	float y =
+	    radius + static_cast<float>(
+			 std::rand() %
+			 static_cast<int>(m_window.getSize().y - radius * 2));
 
-	entity->add<CTransform>(Vec2f(100.0f, 200.0f), Vec2f(1.0f, 1.0f), 0.0f);
+	int vertices =
+	    m_enemyConfig.VMIN +
+	    (std::rand() % (m_enemyConfig.VMAX - m_enemyConfig.VMIN + 1));
 
-	entity->add<CShape>(32.0f, 4, sf::Color(100, 200, 50),
-			    sf::Color(255, 123, 0), 4.0f);
+	float speed =
+	    m_enemyConfig.SMIN + (static_cast<float>(std::rand()) / RAND_MAX *
+				  (m_enemyConfig.SMAX - m_enemyConfig.SMIN));
 
-	// record when the most recent enemy was spawned
+	float vx = (std::rand() % 2 == 0 ? -speed : speed);
+	float vy = (std::rand() % 2 == 0 ? -speed : speed);
+
+	int r = std::rand() % 256;
+	int g = std::rand() % 256;
+	int b = std::rand() % 256;
+
+	auto entity = m_entities.addEntity("enemey");
+
+	entity->add<CTransform>(Vec2f(x, y), Vec2f(vx, vy), 0.0f);
+
+	entity->add<CShape>(
+	    radius, vertices, sf::Color(r, g, b),
+	    sf::Color(m_enemyConfig.OR, m_enemyConfig.OG, m_enemyConfig.OB),
+	    m_enemyConfig.OT);
+
+	entity->add<CCollision>(static_cast<float>(m_enemyConfig.CR));
+
 	m_lastEnemySpawnTime = m_currentFrame;
 }
 
@@ -204,7 +245,10 @@ void Game::sCollision()
 
 void Game::sEnemySpawner()
 {
-	// TODO: code which implements enemy spawning should go here
+	if (m_currentFrame - m_lastEnemySpawnTime >= m_enemyConfig.SI)
+	{
+		spawnEnemy();
+	}
 }
 
 void Game::sGUI()
