@@ -28,7 +28,6 @@ void Game::init(const std::string& path)
 	ImGui::GetIO().FontGlobalScale = 2.0f;
 
 	spawnPlayer();
-	spawnEnemy();
 }
 
 std::shared_ptr<Entity> Game::player()
@@ -92,6 +91,8 @@ void Game::spawnPlayer()
 	entity->add<CShape>(32.0f, 8, sf::Color(10, 10, 10),
 			    sf::Color(255, 0, 0), 4.0f);
 
+	entity->add<CCollision>(32.0f);
+
 	// Add an input component to the player so that we can use inputs
 	entity->add<CInput>();
 }
@@ -143,14 +144,43 @@ void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
 
 void Game::sMovement()
 {
-	// TODO: implement all entity movement in this function
-	//	 you should read the m_player->CInput component to detrmine if
-	// the player is moving
+	auto p = player();
 
-	// Sample movement speed update
-	auto& transform = player()->get<CTransform>();
-	transform.pos.x += transform.velocity.x;
-	transform.pos.y += transform.velocity.y;
+	auto& transform = p->get<CTransform>();
+	auto& input	= p->get<CInput>();
+
+	Vec2f direction(0.0f, 0.0f);
+
+	if (input.up)
+	{
+		direction.y -= 1.0f;
+	}
+	if (input.down)
+	{
+		direction.y = 1.0f;
+	}
+	if (input.left)
+	{
+		direction.x -= 1.0f;
+	}
+	if (input.right)
+	{
+		direction.x += 1.0f;
+	}
+
+	float speed = 5.0f;
+
+	// If moving, normalize direction so diagonla movements are not faster
+	if (direction.x != 0.0f || direction.y != 0.0f)
+	{
+		float length = std::sqrt(direction.x * direction.x +
+					 direction.y * direction.y);
+
+		direction /= length;
+	}
+
+	transform.velocity = direction * speed;
+	transform.pos += transform.velocity;
 }
 
 void Game::sLifeSpan()
@@ -188,14 +218,16 @@ void Game::sGUI()
 
 void Game::sRender()
 
-{	m_window.clear();
+{
+	m_window.clear();
 
-	// Iterate through all entities ( neglecting the entities that don't have transform or shape components.
+	// Iterate through all entities ( neglecting the entities that don't
+	// have transform or shape components.
 	for (auto& e : m_entities.getEntities())
 	{
 		if (!e->has<CTransform>() || !e->has<CShape>())
 		{
-			continue;	
+			continue;
 		}
 
 		auto& transform = e->get<CTransform>();
@@ -216,12 +248,6 @@ void Game::sRender()
 
 void Game::sUserInput()
 {
-	// TODO: handle user input here
-	//	 note that you should only be setting the player's input
-	// componenet variables here 	 you should not implementhe player's
-	// moement logic here 	the movement system will read the variabls you
-	// set in this function
-
 	while (const std::optional event = m_window.pollEvent())
 	{
 		// pass the event to imgui to b parsed
@@ -233,28 +259,46 @@ void Game::sUserInput()
 			m_running = false;
 		}
 
-		// this event is triggered when a key is pressed
+		auto& inputs = player()->get<CInput>();
+
 		if (const auto* keyPressed =
 			event->getIf<sf::Event::KeyPressed>())
 		{
 			switch (keyPressed->code)
 			{
 				case sf::Keyboard::Key::W:
-					std::cout << "W pressed\n";
+					inputs.up = true;
+					break;
+				case sf::Keyboard::Key::S:
+					inputs.down = true;
+					break;
+				case sf::Keyboard::Key::A:
+					inputs.left = true;
+					break;
+				case sf::Keyboard::Key::D:
+					inputs.right = true;
 					break;
 				default:
 					break;
 			}
 		}
 
-		// this event is triggered when a key is released
 		if (const auto* keyReleased =
 			event->getIf<sf::Event::KeyReleased>())
 		{
 			switch (keyReleased->code)
 			{
 				case sf::Keyboard::Key::W:
-					std::cout << "W released\n";
+					inputs.up = false;
+					break;
+				case sf::Keyboard::Key::S:
+					inputs.down = false;
+					break;
+				case sf::Keyboard::Key::A:
+					inputs.left = false;
+					break;
+				case sf::Keyboard::Key::D:
+					inputs.right = false;
 					break;
 				default:
 					break;

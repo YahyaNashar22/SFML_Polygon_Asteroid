@@ -79,6 +79,7 @@ class CInput : public Component
 	bool down  = false;
 	bool right = false;
 	bool shoot = false;
+	bool special = false;
 
 	CInput() = default;
 };
