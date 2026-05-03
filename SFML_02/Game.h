@@ -43,6 +43,15 @@ class Game
 	bool		 m_paused  = false;  // wether we update game logic
 	bool		 m_running = true;
 
+	// Debug / ImGui controls
+	bool m_guiPaused	= false;
+	bool m_guiCollision	= true;
+	bool m_guiEnemyMovement = true;
+
+	int m_guiSpawnInterval   = 120;
+	int m_guiLifespan	   = 60;
+	float m_guiEnemySpeedScale = 1.0f;
+
 	void init(const std::string&
 		      config);	// initialize the GameState with a config file
 	void setPaused(bool paused);  // pause the game

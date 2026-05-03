@@ -74,15 +74,32 @@ class CLifeSpan : public Component
 class CInput : public Component
 {
        public:
-	bool up	   = false;
-	bool left  = false;
-	bool down  = false;
-	bool right = false;
-	bool shoot = false;
+	bool up	     = false;
+	bool left    = false;
+	bool down    = false;
+	bool right   = false;
+	bool shoot   = false;
 	bool special = false;
 
 	CInput() = default;
 };
 
-// TODO
-// Include a special power up component ( with cooldown )
+class CSpecialPower : public Component
+{
+       public:
+	int   cooldown	= 180;
+	int   remaining = 0;
+	float range	= 900.0f;
+	float width	= 18.0f;
+	int   visualFrames = 0;
+
+	Vec2f target = {0.0f, 0.0f};
+
+	CSpecialPower() = default;
+	CSpecialPower(int cd, float r, float w)
+	    : cooldown(cd), range(r), width(w)
+	{
+	}
+
+	bool ready() const { return remaining <= 0; }
+};

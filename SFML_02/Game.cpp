@@ -69,6 +69,13 @@ void Game::init(const std::string& path)
 			    m_bulletConfig.L >> m_bulletConfig.S;
 		}
 	}
+	// initialize GUI defaults from config
+	m_guiSpawnInterval   = static_cast<float>(m_enemyConfig.SI);
+	m_guiLifespan	     = static_cast<float>(m_bulletConfig.L);
+	m_guiEnemySpeedScale = 1.0f;
+	m_guiPaused	     = m_paused;
+	m_guiCollision	     = true;
+	m_guiEnemyMovement   = true;
 
 	m_window.create(
 	    sf::VideoMode({w, h}), "SFML Polygon Asteroid",
@@ -97,8 +104,8 @@ void Game::init(const std::string& path)
 	io.Fonts->Clear();
 	io.Fonts->AddFontFromFileTTF("ARIAL.TTF", 12.0f);
 
-	ImGui::GetStyle().ScaleAllSizes(1.0f);
-	ImGui::GetIO().FontGlobalScale = 2.0f;
+	ImGui::GetStyle().ScaleAllSizes(1.6f);
+	ImGui::GetIO().FontGlobalScale = 1.6f;
 
 	spawnPlayer();
 }
@@ -114,10 +121,6 @@ std::shared_ptr<Entity> Game::player()
 
 void Game::run()
 {
-	// TODO: add pause functionality in here
-	//	some systems should function while paused ( rendering )
-	//	some systems shouldn't (movement / input)
-
 	while (m_running)
 	{
 		// update the entity manager
@@ -126,24 +129,27 @@ void Game::run()
 		// required update call to imgui
 		ImGui::SFML::Update(m_window, m_deltaClock.restart());
 
-		sEnemySpawner();
-		sMovement();
-		sLifeSpan();
-		sCollision();
 		sUserInput();
+
+		if (!m_paused)
+		{
+			sEnemySpawner();
+			sMovement();
+			sLifeSpan();
+			spawnSpecialWeapon(player());
+			if (m_guiCollision)
+			{
+				sCollision();
+			}
+			m_currentFrame++;
+		}
+
 		sGUI();
 		sRender();
-
-		// increment the current frame
-		// may need to be moved when pause implemented
-		m_currentFrame++;
 	}
 }
 
-void Game::setPaused(bool paused)
-{
-	// TODO
-}
+void Game::setPaused(bool paused) { m_paused = paused; }
 
 // respawn the player in the middle of the screen
 void Game::spawnPlayer()
@@ -169,6 +175,9 @@ void Game::spawnPlayer()
 
 	// Add an input component to the player so that we can use inputs
 	entity->add<CInput>();
+
+	// Add Special Power Component
+	entity->add<CSpecialPower>(180, 900.0f, 18.0f);
 }
 
 // spawn an enemy at a random position
@@ -192,8 +201,10 @@ void Game::spawnEnemy()
 	    m_enemyConfig.SMIN + (static_cast<float>(std::rand()) / RAND_MAX *
 				  (m_enemyConfig.SMAX - m_enemyConfig.SMIN));
 
-	float vx = (std::rand() % 2 == 0 ? -speed : speed);
-	float vy = (std::rand() % 2 == 0 ? -speed : speed);
+	float vx =
+	    (std::rand() % 2 == 0 ? -speed : speed) * m_guiEnemySpeedScale;
+	float vy =
+	    (std::rand() % 2 == 0 ? -speed : speed) * m_guiEnemySpeedScale;
 
 	int r = std::rand() % 256;
 	int g = std::rand() % 256;
@@ -247,7 +258,7 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> e)
 				   enemyShape.getFillColor(),
 				   enemyShape.getOutlineColor(), 2);
 		small->add<CCollision>(smallRadius);
-		small->add<CLifeSpan>(60);
+		small->add<CLifeSpan>(m_guiLifespan);
 	}
 }
 
@@ -283,12 +294,107 @@ void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2f& target)
 
 	bullet->add<CCollision>(static_cast<float>(m_bulletConfig.CR));
 
-	bullet->add<CLifeSpan>(m_bulletConfig.L);
+	bullet->add<CLifeSpan>(m_guiLifespan);
 }
 
 void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
 {
-	// TODO: implement your own special weapon
+	auto p = player();
+
+	if (!p->has<CSpecialPower>() || !p->has<CInput>() ||
+	    !p->has<CTransform>())
+	{
+		return;
+	}
+
+	auto& special	      = p->get<CSpecialPower>();
+	auto& input	      = p->get<CInput>();
+	auto& playerTransform = p->get<CTransform>();
+
+	if (special.remaining > 0)
+	{
+		special.remaining--;
+	}
+	if (special.visualFrames > 0)
+	{
+		special.visualFrames--;
+	}
+
+	if (!input.special)
+	{
+		return;
+	}
+
+	input.special = false;
+
+	if (!special.ready())
+	{
+		return;
+	}
+
+	Vec2f start	= playerTransform.pos;
+	Vec2f direction = special.target - start;
+
+	float length =
+	    std::sqrt(direction.x * direction.x + direction.y * direction.y);
+
+	if (length == 0.0f)
+	{
+		return;
+	}
+
+	direction /= length;
+
+	float laserLength = special.range;
+
+	auto hitByLaser = [&](std::shared_ptr<Entity> e)
+	{
+		if (!e->isActive() || !e->has<CTransform>() ||
+		    !e->has<CCollision>())
+		{
+			return false;
+		}
+
+		Vec2f enemyPos = e->get<CTransform>().pos;
+		Vec2f toEnemy  = enemyPos - start;
+
+		float projection =
+		    toEnemy.x * direction.x + toEnemy.y * direction.y;
+
+		if (projection < 0.0f || projection > laserLength)
+		{
+			return false;
+		}
+
+		Vec2f closestPoint    = start + direction * projection;
+		float distanceToLaser = enemyPos.dist(closestPoint);
+
+		return distanceToLaser <=
+		       special.width + e->get<CCollision>().radius;
+	};
+
+	for (auto& enemy : m_entities.getEntities("enemy"))
+	{
+		if (hitByLaser(enemy))
+		{
+			enemy->destroy();
+			m_score += 1;
+			spawnSmallEnemies(enemy);
+		}
+	}
+
+	for (auto& smallEnemy : m_entities.getEntities("smallEnemy"))
+	{
+		if (hitByLaser(smallEnemy))
+		{
+			smallEnemy->destroy();
+			m_score += 2;
+		}
+	}
+
+	special.visualFrames = 6;
+
+	special.remaining = special.cooldown;
 }
 
 void Game::sMovement()
@@ -336,6 +442,11 @@ void Game::sMovement()
 		{
 			continue;
 		}
+		if (!m_guiEnemyMovement &&
+		    (e->tag() == "enemy" || e->tag() == "smallEnemy"))
+		{
+			continue;
+		}
 
 		e->get<CTransform>().pos += e->get<CTransform>().velocity;
 	}
@@ -351,7 +462,7 @@ void Game::sLifeSpan()
 		}
 		auto& lifespan = e->get<CLifeSpan>();
 
-		lifespan.remaining--;
+		lifespan.remaining -= 1;
 
 		if (e->has<CShape>())
 		{
@@ -556,7 +667,8 @@ void Game::sCollision()
 
 void Game::sEnemySpawner()
 {
-	if (m_currentFrame - m_lastEnemySpawnTime >= m_enemyConfig.SI)
+	if (m_currentFrame - m_lastEnemySpawnTime >=
+	    static_cast<int>(m_guiSpawnInterval))
 	{
 		spawnEnemy();
 	}
@@ -564,9 +676,29 @@ void Game::sEnemySpawner()
 
 void Game::sGUI()
 {
-	ImGui::Begin("Geometry Wars");
+	ImGui::Begin("Game Controls");
 
-	ImGui::Text("Stuff Goes Here");
+	// pause toggle
+	if (ImGui::Checkbox("Pause", &m_guiPaused))
+	{
+		setPaused(m_guiPaused);
+	}
+
+	// collision toggle
+	ImGui::Checkbox("Collision", &m_guiCollision);
+
+	// Enemy movement toggle
+	ImGui::Checkbox("Enemy Movement", &m_guiEnemyMovement);
+
+	// Spawn Interval
+	ImGui::SliderInt("Spawn Interval", &m_guiSpawnInterval, 10, 300);
+
+	// LifeSpan
+	ImGui::SliderInt("LifeSpan", &m_guiLifespan, 10, 300);
+
+	// Enemy Speed Scaling
+	ImGui::SliderFloat("Enemy Speed Scale", &m_guiEnemySpeedScale, 0.1f,
+			   5.0f, "%.2f");
 
 	ImGui::End();
 }
@@ -594,6 +726,40 @@ void Game::sRender()
 		shape.setPosition(transform.pos);
 
 		m_window.draw(shape);
+	}
+
+	auto p = player();
+
+	if (p->has<CSpecialPower>())
+	{
+		auto& special = p->get<CSpecialPower>();
+
+		if (special.visualFrames > 0)
+		{
+			Vec2f start	= p->get<CTransform>().pos;
+			Vec2f direction = special.target - start;
+
+			float length = std::sqrt(direction.x * direction.x +
+						 direction.y * direction.y);
+
+			if (length != 0.0f)
+			{
+				direction /= length;
+
+				sf::RectangleShape laser;
+				laser.setSize({special.range, special.width});
+				laser.setOrigin({0.0f, special.width / 2.0f});
+				laser.setPosition(start);
+				laser.setFillColor(sf::Color(255, 0, 0, 180));
+
+				float angle =
+				    std::atan2(direction.y, direction.x) *
+				    180.0f / 3.14159265f;
+				laser.setRotation(sf::degrees(angle));
+
+				m_window.draw(laser);
+			}
+		}
 	}
 
 	m_text.setString("Score: " + std::to_string(m_score));
@@ -683,10 +849,16 @@ void Game::sUserInput()
 
 			if (mouseClick->button == sf::Mouse::Button::Right)
 			{
-				std::cout << "Right Mouse Button Clicked at ( "
-					  << mouseClick->position.x << ","
-					  << mouseClick->position.y << " )\n";
-				// call spawnSpecialWeapon here
+				auto p = player();
+
+				auto& input   = p->get<CInput>();
+				auto& special = p->get<CSpecialPower>();
+
+				input.special = true;
+
+				special.target = Vec2f(
+				    static_cast<float>(mouseClick->position.x),
+				    static_cast<float>(mouseClick->position.y));
 			}
 		}
 	}
