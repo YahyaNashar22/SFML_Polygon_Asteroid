@@ -1,8 +1,9 @@
 #include "Game.h"
 
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
-#include <cstdint>
 #include <iostream>
 
 Game::Game(const std::string& config) : m_text(m_font) { init(config); }
@@ -277,14 +278,6 @@ void Game::sMovement()
 
 void Game::sLifeSpan()
 {
-	// for all entities
-	//	if entity has no lifespan component, skip it
-	//	if entity has > 0 remaining lifespan, substract 1
-	//	if it has lifespan and is alive
-	//		scale its alpha channel properly
-	//	if it has lifespan and its time is up
-	//		destroy the entity
-
 	for (auto& e : m_entities.getEntities())
 	{
 		if (!e->has<CLifeSpan>())
@@ -311,13 +304,13 @@ void Game::sLifeSpan()
 
 			auto alpha = static_cast<std::uint8_t>(255 * ratio);
 
-			fill.a = alpha;
+			fill.a	  = alpha;
 			outline.a = alpha;
 
 			shape.setFillColor(fill);
 			shape.setOutlineColor(outline);
 		}
-	
+
 		if (lifespan.remaining <= 0)
 		{
 			e->destroy();
@@ -327,8 +320,117 @@ void Game::sLifeSpan()
 
 void Game::sCollision()
 {
-	// TODO: implement all proper collisions between entities
-	//	 be sure to use the collision radius, NOT the shape radius
+	const float windowWidth	 = static_cast<float>(m_window.getSize().x);
+	const float windowHeight = static_cast<float>(m_window.getSize().y);
+
+	// screen border collision
+	for (auto& e : m_entities.getEntities())
+	{
+		if (!e->has<CTransform>() || !e->has<CCollision>())
+		{
+			continue;
+		}
+
+		auto& transform = e->get<CTransform>();
+		auto& collision = e->get<CCollision>();
+
+		float r = collision.radius;
+
+		// Bullets get destroyed when leaving screen
+		if (e->tag() == "bullet")
+		{
+			if (transform.pos.x < 0 ||
+			    transform.pos.x > windowWidth ||
+			    transform.pos.y < 0 ||
+			    transform.pos.y > windowHeight)
+			{
+				e->destroy();
+			}
+
+			continue;
+		}
+
+		// player/enemies clamp/bounce
+		if (transform.pos.x - r < 0)
+		{
+			transform.pos.x = r;
+			transform.velocity.x *= -1;
+		}
+		if (transform.pos.x + r > windowWidth)
+		{
+			transform.pos.x = windowWidth - r;
+			transform.velocity.x *= -1;
+		}
+		if (transform.pos.y - r < 0)
+		{
+			transform.pos.y = r;
+			transform.velocity.y *= -1;
+		}
+		if (transform.pos.y + r > windowHeight)
+		{
+			transform.pos.y = windowHeight - r;
+			transform.velocity.y *= -1;
+		}
+	}
+
+	// Bullets Enemies Collision
+	for (auto& bullet : m_entities.getEntities("bullet"))
+	{
+		if (!bullet->isActive() || !bullet->has<CTransform>() ||
+			!bullet->has<CCollision>())
+		{
+			continue;
+		}
+
+		for (auto& enemy : m_entities.getEntities("enemy"))
+		{
+			if (!enemy->isActive() || !enemy->has<CTransform>() ||
+			    !enemy->has<CCollision>())
+			{
+				continue;
+			}
+
+			float distance = bullet->get<CTransform>().pos.dist(
+			    enemy->get<CTransform>().pos);
+			float combineRadius = bullet->get<CCollision>().radius +
+					      enemy->get<CCollision>().radius;
+
+			if (distance < combineRadius)
+			{
+				bullet->destroy();
+				enemy->destroy();
+
+				spawnSmallEnemies(enemy);
+
+				break;
+			}
+		}
+	}
+
+	// Player / Enemy Collision
+	auto p = player();
+	for (auto& enemy : m_entities.getEntities("enenmy"))
+	{
+		if (!enemy->isActive() || !enemy->has<CTransform>() ||
+			!enemy->has<CCollision>())
+		{
+			continue;
+		}
+
+		float distance	    = p->get<CTransform>().pos.dist(enemy->get<CTransform>().pos);
+		float combineRadius =
+		    p->get<CCollision>().radius + enemy->get<CCollision>().radius;
+
+		if (distance < combineRadius)
+		{
+			auto& transform = p->get<CTransform>();
+			transform.pos =
+			    Vec2f(windowWidth / 2, windowHeight / 2);
+			transform.velocity = Vec2f(0.0f, 0.0f);
+
+			enemy->destroy();
+		}
+	}
 }
 
 void Game::sEnemySpawner()
