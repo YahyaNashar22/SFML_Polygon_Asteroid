@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 
 Game::Game(const std::string& config) : m_text(m_font) { init(config); }
@@ -13,38 +14,78 @@ void Game::init(const std::string& path)
 	// seed random
 	std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
-	// TODO: read in config file here
-	//	 use the premade PlayerConfig, EnemyConfig, BulletConfig
-	//	 variables
-	m_enemyConfig.SR   = 32;    // shape radius
-	m_enemyConfig.CR   = 32;    // collision radius
-	m_enemyConfig.OR   = 255;   // outline red
-	m_enemyConfig.OG   = 255;   // outline green
-	m_enemyConfig.OB   = 255;   // outline blue
-	m_enemyConfig.OT   = 4;	    // outline thickness
-	m_enemyConfig.VMIN = 3;	    // min vertices
-	m_enemyConfig.VMAX = 8;	    // max vertices
-	m_enemyConfig.SMIN = 1.0f;  // min speed
-	m_enemyConfig.SMAX = 3.0f;  // max speed
-	m_enemyConfig.L	   = 60;    // lifespan later
-	m_enemyConfig.SI   = 120;   // spawn interval frames
+	// read from config.txt
+	std::fstream fin("config.txt");
+	std::string  key;
 
-	m_bulletConfig.SR = 10;	    // shape radius
-	m_bulletConfig.CR = 10;	    // collision radius
-	m_bulletConfig.FR = 255;    // fill red
-	m_bulletConfig.FG = 255;    // fill green
-	m_bulletConfig.FB = 255;    // fill blue
-	m_bulletConfig.OR = 255;    // outline red
-	m_bulletConfig.OG = 0;	    // outline green
-	m_bulletConfig.OB = 0;	    // outline blue
-	m_bulletConfig.OT = 2;	    // outline thickness
-	m_bulletConfig.V  = 20;	    // vertices
-	m_bulletConfig.S  = 10.0f;  // speed
-	m_bulletConfig.L  = 60;	    // lifespan later
+	// Window configs
+	unsigned int w		= 1280;
+	unsigned int h		= 720;
+	unsigned int fps	= 60;
+	bool	     fullscreen = 0;
 
-	// setup default window parameters
-	m_window.create(sf::VideoMode({1280, 720}), "SFML Polygon Asteroid");
-	m_window.setFramerateLimit(60);
+	// Font configs
+	std::string  font      = "ARIAL.TTF";
+	unsigned int font_size = 24;
+	int	     font_r    = 255;
+	int	     font_g    = 255;
+	int	     font_b    = 255;
+
+	while (fin >> key)
+	{
+		if (key == "Window")
+		{
+			fin >> w >> h >> fps >> fullscreen;
+		}
+		else if (key == "Font")
+		{
+			fin >> font >> font_size >> font_r >> font_g >> font_b;
+		}
+		else if (key == "Player")
+		{
+			fin >> m_playerConfig.SR >> m_playerConfig.CR >>
+			    m_playerConfig.FR >> m_playerConfig.FG >>
+			    m_playerConfig.FB >> m_playerConfig.OR >>
+			    m_playerConfig.OG >> m_playerConfig.OB >>
+			    m_playerConfig.OT >> m_playerConfig.V >>
+			    m_playerConfig.S;
+		}
+		else if (key == "Enemy")
+		{
+			fin >> m_enemyConfig.SR >> m_enemyConfig.CR >>
+			    m_enemyConfig.OR >> m_enemyConfig.OG >>
+			    m_enemyConfig.OB >> m_enemyConfig.OT >>
+			    m_enemyConfig.VMIN >> m_enemyConfig.VMAX >>
+			    m_enemyConfig.L >> m_enemyConfig.SI >>
+			    m_enemyConfig.SMIN >> m_enemyConfig.SMAX;
+		}
+		else if (key == "Bullet")
+		{
+			fin >> m_bulletConfig.SR >> m_bulletConfig.CR >>
+			    m_bulletConfig.FR >> m_bulletConfig.FG >>
+			    m_bulletConfig.FB >> m_bulletConfig.OR >>
+			    m_bulletConfig.OG >> m_bulletConfig.OB >>
+			    m_bulletConfig.OT >> m_bulletConfig.V >>
+			    m_bulletConfig.L >> m_bulletConfig.S;
+		}
+	}
+
+	m_window.create(
+	    sf::VideoMode({w, h}), "SFML Polygon Asteroid",
+	    fullscreen ? sf::State::Fullscreen : sf::State::Windowed);
+	m_window.setFramerateLimit(fps);
+
+	if (!m_font.openFromFile(font))
+	{
+		std::cerr << "Failed to load font\n";
+	}
+
+	m_text.setFont(m_font);
+	m_text.setCharacterSize(font_size);
+	m_text.setFillColor(sf::Color(static_cast<std::uint8_t>(font_r),
+				      static_cast<std::uint8_t>(font_g),
+				      static_cast<std::uint8_t>(font_b)));
+	m_text.setPosition({20.0f, 20.0f});
 
 	if (!ImGui::SFML::Init(m_window))
 	{
@@ -158,7 +199,7 @@ void Game::spawnEnemy()
 	int g = std::rand() % 256;
 	int b = std::rand() % 256;
 
-	auto entity = m_entities.addEntity("enemey");
+	auto entity = m_entities.addEntity("enemy");
 
 	entity->add<CTransform>(Vec2f(x, y), Vec2f(vx, vy), 0.0f);
 
@@ -175,15 +216,39 @@ void Game::spawnEnemy()
 // spawns the small enemies when a big one (input entity e) explodes
 void Game::spawnSmallEnemies(std::shared_ptr<Entity> e)
 {
-	// TODO: spawn small enemies at the location of the input enemy e
+	if (!e->has<CTransform>() || !e->has<CShape>())
+	{
+		return;
+	}
 
-	// when we create the smaller enemy, we have to read the values of the
-	// original enemy
-	// - swn a number of small enemies equal to the vertices of the origial
-	// enemy
-	// - set each small enemy to the same color as the original, half the
-	// size
-	// - small enemies are worth double points of the original enemy
+	auto& enemyTransform = e->get<CTransform>();
+	auto& enemyShape     = e->get<CShape>().circle;
+
+	Vec2f center = enemyTransform.pos;
+
+	size_t points = enemyShape.getPointCount();
+
+	float smallRadius = enemyShape.getRadius() / 2.0f;
+	float speed	  = 4.0f;
+
+	const float PI = 3.14159265f;
+
+	for (size_t i = 0; i < points; i++)
+	{
+		float angle = (2.0f * PI * i) / static_cast<float>(points);
+
+		Vec2f velocity(std::cos(angle) * speed,
+			       std::sin(angle) * speed);
+
+		auto small = m_entities.addEntity("smallEnemy");
+
+		small->add<CTransform>(center, velocity, 0.0f);
+		small->add<CShape>(smallRadius, points,
+				   enemyShape.getFillColor(),
+				   enemyShape.getOutlineColor(), 2);
+		small->add<CCollision>(smallRadius);
+		small->add<CLifeSpan>(60);
+	}
 }
 
 // spawns a bullet from a given entity to a target location
@@ -377,11 +442,12 @@ void Game::sCollision()
 	for (auto& bullet : m_entities.getEntities("bullet"))
 	{
 		if (!bullet->isActive() || !bullet->has<CTransform>() ||
-			!bullet->has<CCollision>())
+		    !bullet->has<CCollision>())
 		{
 			continue;
 		}
 
+		// enemies
 		for (auto& enemy : m_entities.getEntities("enemy"))
 		{
 			if (!enemy->isActive() || !enemy->has<CTransform>() ||
@@ -400,7 +466,33 @@ void Game::sCollision()
 				bullet->destroy();
 				enemy->destroy();
 
+				m_score += 1;
 				spawnSmallEnemies(enemy);
+
+				break;
+			}
+		}
+
+		// small enemies
+		for (auto& enemy : m_entities.getEntities("smallEnemy"))
+		{
+			if (!enemy->isActive() || !enemy->has<CTransform>() ||
+			    !enemy->has<CCollision>())
+			{
+				continue;
+			}
+
+			float distance = bullet->get<CTransform>().pos.dist(
+			    enemy->get<CTransform>().pos);
+			float combineRadius = bullet->get<CCollision>().radius +
+					      enemy->get<CCollision>().radius;
+
+			if (distance < combineRadius)
+			{
+				bullet->destroy();
+				enemy->destroy();
+
+				m_score += 2;
 
 				break;
 			}
@@ -409,17 +501,19 @@ void Game::sCollision()
 
 	// Player / Enemy Collision
 	auto p = player();
-	for (auto& enemy : m_entities.getEntities("enenmy"))
+
+	for (auto& enemy : m_entities.getEntities("enemy"))
 	{
 		if (!enemy->isActive() || !enemy->has<CTransform>() ||
-			!enemy->has<CCollision>())
+		    !enemy->has<CCollision>())
 		{
 			continue;
 		}
 
-		float distance	    = p->get<CTransform>().pos.dist(enemy->get<CTransform>().pos);
-		float combineRadius =
-		    p->get<CCollision>().radius + enemy->get<CCollision>().radius;
+		float distance =
+		    p->get<CTransform>().pos.dist(enemy->get<CTransform>().pos);
+		float combineRadius = p->get<CCollision>().radius +
+				      enemy->get<CCollision>().radius;
 
 		if (distance < combineRadius)
 		{
@@ -427,6 +521,33 @@ void Game::sCollision()
 			transform.pos =
 			    Vec2f(windowWidth / 2, windowHeight / 2);
 			transform.velocity = Vec2f(0.0f, 0.0f);
+			m_score		   = 0;
+
+			enemy->destroy();
+		}
+	}
+
+	// Player / SmallEnemy Collision
+	for (auto& enemy : m_entities.getEntities("smallEnemy"))
+	{
+		if (!enemy->isActive() || !enemy->has<CTransform>() ||
+		    !enemy->has<CCollision>())
+		{
+			continue;
+		}
+
+		float distance =
+		    p->get<CTransform>().pos.dist(enemy->get<CTransform>().pos);
+		float combineRadius = p->get<CCollision>().radius +
+				      enemy->get<CCollision>().radius;
+
+		if (distance < combineRadius)
+		{
+			auto& transform = p->get<CTransform>();
+			transform.pos =
+			    Vec2f(windowWidth / 2, windowHeight / 2);
+			transform.velocity = Vec2f(0.0f, 0.0f);
+			m_score		   = 0;
 
 			enemy->destroy();
 		}
@@ -475,7 +596,8 @@ void Game::sRender()
 		m_window.draw(shape);
 	}
 
-	// draw the ui last
+	m_text.setString("Score: " + std::to_string(m_score));
+	m_window.draw(m_text);
 	ImGui::SFML::Render(m_window);
 	m_window.display();
 }
