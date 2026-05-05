@@ -42,6 +42,8 @@ class Game
 	int		 m_lastEnemySpawnTime = 0;
 	bool		 m_paused  = false;  // wether we update game logic
 	bool		 m_running = true;
+	sf::Texture	 m_bgTexture;
+	sf::Sprite	 m_background;
 
 	// Debug / ImGui controls
 	bool m_guiPaused	= false;

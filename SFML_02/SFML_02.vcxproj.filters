@@ -50,4 +50,9 @@
   <ItemGroup>
     <Font Include="ARIAL.TTF" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="bg.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

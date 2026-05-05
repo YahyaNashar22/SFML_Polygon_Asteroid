@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iostream>
 
-Game::Game(const std::string& config) : m_text(m_font) { init(config); }
+Game::Game(const std::string& config) : m_text(m_font), m_background(m_bgTexture) { init(config); }
 
 void Game::init(const std::string& path)
 {
@@ -77,17 +77,36 @@ void Game::init(const std::string& path)
 	m_guiCollision	     = true;
 	m_guiEnemyMovement   = true;
 
+
 	m_window.create(
 	    sf::VideoMode({w, h}), "SFML Polygon Asteroid",
 	    fullscreen ? sf::State::Fullscreen : sf::State::Windowed);
 	m_window.setFramerateLimit(fps);
+
+	// Background
+	if (!m_bgTexture.loadFromFile("bg.jpg"))
+	{
+		std::cerr << "Failed to load background\n";
+	}
+
+	m_background.setTexture(m_bgTexture);
+
+	auto textureSize = m_bgTexture.getSize();
+
+	m_background.setTextureRect(
+	    sf::IntRect({0, 0}, {static_cast<int>(textureSize.x),
+				 static_cast<int>(textureSize.y)}));
+
+	m_background.setPosition({0.f, 0.f});
+
+	m_background.setScale({static_cast<float>(w) / textureSize.x,
+			       static_cast<float>(h) / textureSize.y});
 
 	if (!m_font.openFromFile(font))
 	{
 		std::cerr << "Failed to load font\n";
 	}
 
-	m_text.setFont(m_font);
 	m_text.setCharacterSize(font_size);
 	m_text.setFillColor(sf::Color(static_cast<std::uint8_t>(font_r),
 				      static_cast<std::uint8_t>(font_g),
@@ -154,9 +173,6 @@ void Game::setPaused(bool paused) { m_paused = paused; }
 // respawn the player in the middle of the screen
 void Game::spawnPlayer()
 {
-	// TODO: Finish adding all properties of the player with the correct
-	// values from the config
-
 	// We create every entity by calling EntityManager.addEntity(tag)
 	// This returns a std::shared_ptr<Entity>, so we use 'auto' to save
 	// typing
@@ -707,6 +723,8 @@ void Game::sRender()
 
 {
 	m_window.clear();
+
+	m_window.draw(m_background);
 
 	// Iterate through all entities ( neglecting the entities that don't
 	// have transform or shape components.
