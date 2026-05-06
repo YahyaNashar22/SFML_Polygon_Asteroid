@@ -3,10 +3,9 @@
 #include <SFML/Graphics.hpp>
 #include <memory>
 
+#include "EntityManager.hpp"
 #include "imgui-SFML.h"
 #include "imgui.h"
-
-#include "EntityManager.hpp"
 
 struct PlayerConfig
 {
@@ -26,7 +25,6 @@ struct BulletConfig
 	float S;
 };
 
-
 class Game
 {
 	sf::RenderWindow m_window;    // the window we draw to
@@ -44,14 +42,16 @@ class Game
 	bool		 m_running = true;
 	sf::Texture	 m_bgTexture;
 	sf::Sprite	 m_background;
+	sf::Texture	 m_playerTexture;
+	sf::Sprite	 m_playerSprite;
 
 	// Debug / ImGui controls
 	bool m_guiPaused	= false;
 	bool m_guiCollision	= true;
 	bool m_guiEnemyMovement = true;
 
-	int m_guiSpawnInterval   = 120;
-	int m_guiLifespan	   = 60;
+	int   m_guiSpawnInterval   = 120;
+	int   m_guiLifespan	   = 60;
 	float m_guiEnemySpeedScale = 1.0f;
 
 	void init(const std::string&

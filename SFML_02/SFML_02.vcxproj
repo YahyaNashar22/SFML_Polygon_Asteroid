@@ -151,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="bg.jpg" />
+    <Image Include="spaceship.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

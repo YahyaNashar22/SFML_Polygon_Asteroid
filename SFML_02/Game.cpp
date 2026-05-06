@@ -7,7 +7,11 @@
 #include <fstream>
 #include <iostream>
 
-Game::Game(const std::string& config) : m_text(m_font), m_background(m_bgTexture) { init(config); }
+Game::Game(const std::string& config)
+    : m_text(m_font), m_background(m_bgTexture), m_playerSprite(m_playerTexture)
+{
+	init(config);
+}
 
 void Game::init(const std::string& path)
 {
@@ -77,7 +81,6 @@ void Game::init(const std::string& path)
 	m_guiCollision	     = true;
 	m_guiEnemyMovement   = true;
 
-
 	m_window.create(
 	    sf::VideoMode({w, h}), "SFML Polygon Asteroid",
 	    fullscreen ? sf::State::Fullscreen : sf::State::Windowed);
@@ -102,6 +105,29 @@ void Game::init(const std::string& path)
 	m_background.setScale({static_cast<float>(w) / textureSize.x,
 			       static_cast<float>(h) / textureSize.y});
 
+	// player texture
+	if (!m_playerTexture.loadFromFile("spaceship.png"))
+	{
+		std::cerr << "Failed to load player texture\n";
+	}
+
+	std::cout << "Player texture size: " << m_playerTexture.getSize().x
+		  << " x " << m_playerTexture.getSize().y << "\n";
+
+	m_playerSprite.setTexture(m_playerTexture);
+
+	auto playerSize = m_playerTexture.getSize();
+
+	m_playerSprite.setTextureRect(sf::IntRect(
+	    {0, 0},
+	    {static_cast<int>(playerSize.x), static_cast<int>(playerSize.y)}));
+
+	m_playerSprite.setOrigin({static_cast<float>(playerSize.x) / 2.f,
+				  static_cast<float>(playerSize.y) / 2.f});
+
+	m_playerSprite.setScale({128.f / static_cast<float>(playerSize.x),
+				 128.f / static_cast<float>(playerSize.y)});
+	// Font
 	if (!m_font.openFromFile(font))
 	{
 		std::cerr << "Failed to load font\n";
@@ -730,13 +756,27 @@ void Game::sRender()
 	// have transform or shape components.
 	for (auto& e : m_entities.getEntities())
 	{
-		if (!e->has<CTransform>() || !e->has<CShape>())
+		if (!e->has<CTransform>())
 		{
 			continue;
 		}
 
 		auto& transform = e->get<CTransform>();
-		auto& shape	= e->get<CShape>().circle;
+
+		if (e->tag() == "player")
+		{
+			m_playerSprite.setPosition(transform.pos);
+
+			m_window.draw(m_playerSprite);
+			continue;  // IMPORTANT: do not draw player CShape
+		}
+
+		if (!e->has<CShape>())
+		{
+			continue;
+		}
+
+		auto& shape = e->get<CShape>().circle;
 
 		transform.angle += 1.0f;
 
